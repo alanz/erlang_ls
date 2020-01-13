@@ -38,7 +38,7 @@
         , document_rangeformatting/3
         , document_ontypeformatting/4
         , folding_range/1
-        , shutdown/0
+        , lsp_shutdown/0
         , start_link/2
         , stop/0
         , workspace_symbol/1
@@ -156,9 +156,9 @@ folding_range(Uri) ->
 initialize(RootUri, InitOptions) ->
   gen_server:call(?SERVER, {initialize, {RootUri, InitOptions}}).
 
--spec shutdown() -> map().
-shutdown() ->
-  gen_server:call(?SERVER, {shutdown}).
+-spec lsp_shutdown() -> map().
+lsp_shutdown() ->
+  gen_server:call(?SERVER, {lsp_shutdown}).
 
 -spec exit() -> ok.
 exit() ->
@@ -209,7 +209,7 @@ handle_call({exit}, _From, State) ->
   Content = els_protocol:request(RequestId, Method, Params),
   Cb:send(Server, Content),
   {reply, ok, State};
-handle_call({shutdown}, From, State) ->
+handle_call({lsp_shutdown}, From, State) ->
   #state{transport_cb = Cb, transport_server = Server} = State,
   RequestId = State#state.request_id,
   Method = <<"shutdown">>,

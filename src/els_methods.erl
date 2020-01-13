@@ -7,7 +7,8 @@
 
 -export([ initialize/2
         , initialized/2
-        , shutdown/2
+        %% , shutdown/2
+        , lsp_shutdown/2
         , exit/2
         ]).
 
@@ -92,6 +93,8 @@ not_implemented_method(Method, State) ->
 -spec method_to_function_name(method_name()) -> atom().
 method_to_function_name(<<"$/cancelRequest">>) ->
   cancel_request;
+method_to_function_name(<<"shutdown">>) ->
+  lsp_shutdown;
 method_to_function_name(Method) ->
   Replaced = string:replace(Method, <<"/">>, <<"_">>),
   Lower    = string:lowercase(Replaced),
@@ -187,8 +190,9 @@ initialized(_Params, State) ->
 %% shutdown
 %%==============================================================================
 
--spec shutdown(params(), state()) -> result().
-shutdown(_Params, State) ->
+-spec lsp_shutdown(params(), state()) -> result().
+lsp_shutdown(_Params, State) ->
+  lager:info("Language server received shutdown request..."),
   {response, null, State#{status => shutdown}}.
 
 %%==============================================================================
