@@ -11,6 +11,7 @@
 
 -export([ notify/2
         , publish/2
+        , get_in_progress/0
         ]).
 
 
@@ -20,7 +21,8 @@
 -include("erlang_ls.hrl").
 -include_lib("kernel/include/logger.hrl").
 
--type state() :: #{in_progress => [progress_entry()]}.
+-type state() :: #{ in_progress => [progress_entry()]
+                  , complete => [uri()]}.
 -type progress_entry() :: #{ uri := uri()
                            , pending := [job()]
                            , diagnostics := [els_diagnostics:diagnostic()]
@@ -42,7 +44,8 @@ options() ->
 
 -spec init() -> state().
 init() ->
-  #{ in_progress => [] }.
+  #{ in_progress => []
+   , complete => [] }.
 
 %% LSP 3.15 introduce versioning for diagnostics. Until all clients
 %% support it, we need to keep track of old diagnostics and re-publish
@@ -50,7 +53,8 @@ init() ->
 -spec handle_info(any(), state()) -> state().
 handle_info({diagnostics, Diagnostics, Job}, State) ->
   ?LOG_DEBUG("Received diagnostics [job=~p]", [Job]),
-  #{ in_progress := InProgress } = State,
+  #{ in_progress := InProgress
+   , complete := Completed } = State,
   { #{ pending := Jobs
      , diagnostics := OldDiagnostics
      , uri := Uri
@@ -61,7 +65,8 @@ handle_info({diagnostics, Diagnostics, Job}, State) ->
   ?MODULE:publish(Uri, NewDiagnostics),
   case lists:delete(Job, Jobs) of
     [] ->
-      State#{in_progress => Rest};
+      State#{in_progress => Rest
+            , complete => [Uri|Completed] };
     Remaining ->
       State#{in_progress => [#{ pending => Remaining
                               , diagnostics => NewDiagnostics
@@ -78,7 +83,10 @@ handle_request({run_diagnostics, Params}, State) ->
   ?LOG_DEBUG("Starting diagnostics jobs [uri=~p]", [Uri]),
   Jobs = els_diagnostics:run_diagnostics(Uri),
   Entry = #{uri => Uri, pending => Jobs, diagnostics => []},
-  {noresponse, State#{in_progress => [Entry|InProgress]}}.
+  {noresponse, State#{in_progress => [Entry|InProgress]}};
+handle_request({get_in_progress, _Params}, State) ->
+  #{in_progress := InProgress, complete := Completed} = State,
+  {{InProgress, Completed}, State}.
 
 %%==============================================================================
 %% API
@@ -95,6 +103,10 @@ publish(Uri, Diagnostics) ->
             , diagnostics => Diagnostics
             },
   els_server:send_notification(Method, Params).
+
+-spec get_in_progress() -> term().
+get_in_progress() ->
+  els_provider:handle_request(?MODULE, {get_in_progress, #{}}).
 
 %%==============================================================================
 %% Internal Functions

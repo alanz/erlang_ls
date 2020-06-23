@@ -6,6 +6,7 @@
         , get/1
         , set/2
         , start_link/0
+        , project_paths/3
         ]).
 
 %% gen_server callbacks

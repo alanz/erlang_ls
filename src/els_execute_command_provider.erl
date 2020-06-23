@@ -5,6 +5,7 @@
 -export([ handle_request/2
         , is_enabled/0
         , options/0
+        , get_server_info/0
         ]).
 
 %%==============================================================================
@@ -56,31 +57,7 @@ execute_command(<<"replace-lines">>
   els_server:send_request(Method, Params),
   [];
 execute_command(<<"server-info">>, _Arguments) ->
-  {ok, Version} = application:get_key(?APP, vsn),
-  BinVersion = list_to_binary(Version),
-  Root = filename:basename(els_uri:path(els_config:get(root_uri))),
-  ConfigPath = case els_config:get(config_path) of
-                 undefined -> <<"undefined">>;
-                 Path -> list_to_binary(Path)
-               end,
-
-  OtpPathConfig = list_to_binary(els_config:get(otp_path)),
-  OtpRootDir = list_to_binary(code:root_dir()),
-  OtpMessage = case OtpRootDir == OtpPathConfig of
-                 true ->
-                   <<", OTP root ", OtpRootDir/binary>>;
-                 false ->
-                   <<", OTP root(code):"
-                    , OtpRootDir/binary
-                   , ", OTP root(config):"
-                    , OtpPathConfig/binary>>
-               end,
-  Message = <<"Erlang LS (in ", Root/binary, "), version: "
-             , BinVersion/binary
-             , ", config from "
-             , ConfigPath/binary
-             , OtpMessage/binary
-            >>,
+  Message = get_server_info(),
   els_server:send_notification(<<"window/showMessage">>,
                                #{ type => ?MESSAGE_TYPE_INFO,
                                   message => Message
@@ -128,3 +105,38 @@ execute_command(Command, Arguments) ->
   ?LOG_INFO("Unsupported command: [Command=~p] [Arguments=~p]"
            , [Command, Arguments]),
   [].
+
+
+-spec get_server_info() -> binary().
+get_server_info() ->
+  {ok, Version} = application:get_key(?APP, vsn),
+  BinVersion = list_to_binary(Version),
+  Root = filename:basename(els_uri:path(els_config:get(root_uri))),
+  ConfigPath = case els_config:get(config_path) of
+                 undefined -> <<"undefined">>;
+                 Path -> list_to_binary(Path)
+               end,
+
+  OtpPathConfig = list_to_binary(els_config:get(otp_path)),
+  OtpRootDir = list_to_binary(code:root_dir()),
+  OtpMessage = case OtpRootDir == OtpPathConfig of
+                 true ->
+                   <<", OTP root ", OtpRootDir/binary>>;
+                 false ->
+                   <<", OTP root(code):"
+                    , OtpRootDir/binary
+                   , ", OTP root(config):"
+                    , OtpPathConfig/binary>>
+               end,
+  Message = <<"Erlang LS (in ", Root/binary, "), version: "
+             , BinVersion/binary
+             , ", config from "
+             , ConfigPath/binary
+             , OtpMessage/binary
+            >>,
+  Message.
+  %% els_server:send_notification(<<"window/showMessage">>,
+  %%                              #{ type => ?MESSAGE_TYPE_INFO,
+  %%                                 message => Message
+  %%                               }),
+  %% [];

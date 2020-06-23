@@ -4,6 +4,7 @@
 
 -export([ parse_args/1
         , log_root/0
+        , print_version/0]).
         ]).
 
 %%==============================================================================
@@ -40,6 +41,11 @@ parse_args(Args) ->
   case getopt:parse(opt_spec_list(), Args) of
     {ok, {[version | _], _BadArgs}} ->
       print_version(),
+      halt(1);
+    {ok, {[check | Rest], OtherArgs}} ->
+      set_args(Rest),
+      ok = lager_config(),
+      els_cli:test_config(Rest, OtherArgs),
       halt(1);
     {ok, {ParsedArgs, _BadArgs}} ->
       set_args(ParsedArgs);
@@ -81,11 +87,33 @@ opt_spec_list() ->
     , {string, ?DEFAULT_LOGGING_LEVEL}
     , "The log level that should be used."
     }
+ ,  { check
+    , $c
+    , "check"
+    , undefined
+    , "Check the server against the current directory,"
+      " trying to load all the files in it."
+    }
+ ,  { check_dir
+    , $k
+    , "check-dir"
+    , {string, "."}
+    , "Directory to be checked."
+    }
+ ,  { check_indexing_on
+    , $i
+    , "check-index"
+    , undefined
+    , "Run indexing before checking"
+    }
   ].
 
 -spec set_args([] | [getopt:compound_option()]) -> ok.
 set_args([]) -> ok;
 set_args([version | Rest]) -> set_args(Rest);
+set_args([check_indexing_on | Rest]) -> set_args(Rest);
+set_args([{check_dir, _} | Rest]) -> set_args(Rest);
+set_args([{check_indexing_on, _} | Rest]) -> set_args(Rest);
 set_args([{Arg, Val} | Rest]) ->
   set(Arg, Val),
   set_args(Rest).

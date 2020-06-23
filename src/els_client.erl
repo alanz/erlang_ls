@@ -83,7 +83,7 @@
 %% Type Definitions
 %%==============================================================================
 -type state()        :: #state{}.
--type init_options() :: #{}.
+-type init_options() :: map().
 -type transport()    :: stdio | tcp.
 -type transport_cb() :: els_stdio_client | els_tcp_client.
 -type request_id()   :: pos_integer().
@@ -359,15 +359,15 @@ do_handle_messages([Message|Messages], Pending, Notifications, Requests) ->
     false ->
       case is_notification(Message) of
         true ->
-          ?LOG_DEBUG( "[CLIENT] Discarding Notification [message=~p]"
-                    , [Message]),
+          ?LOG_DEBUG( "[CLIENT] Queueing Notification [message=~p]"
+                     , [Message]),
           do_handle_messages( Messages
                             , Pending
                             , [Message|Notifications]
                             , Requests);
         false ->
-          ?LOG_DEBUG( "[CLIENT] Discarding Server Request [message=~p]"
-                    , [Message]),
+          ?LOG_DEBUG( "[CLIENT] Queueing Server Request [message=~p]"
+                     , [Message]),
           do_handle_messages( Messages
                             , Pending
                             , Notifications

@@ -14,8 +14,10 @@
         , to_binary/1
         , to_list/1
         , compose_node_name/2
+        , make_normalized_path/1
         ]).
 
+-export_type([ path/0 ]).
 
 %%==============================================================================
 %% Includes

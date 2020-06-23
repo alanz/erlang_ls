@@ -89,6 +89,8 @@ handle_request({initialized, _Params}, State) ->
     true  -> els_indexing:start();
     false -> ?LOG_INFO("Skipping Indexing (disabled via InitOptions)")
   end,
+  Message = els_execute_command_provider:get_server_info(),
+  els_cli:send_telemetry(#{ message => Message }),
   {null, State};
 handle_request({shutdown, _Params}, State) ->
   {null, State};

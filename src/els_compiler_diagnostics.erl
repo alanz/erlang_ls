@@ -182,7 +182,10 @@ diagnostic(_Path, MessagePath, Range, Document, Module, Desc0, Severity) ->
 -spec diagnostic(poi_range(), module(), string(), integer()) ->
         els_diagnostics:diagnostic().
 diagnostic(Range, Module, Desc, Severity) ->
+  lager:info("diagnostic: {Module, Range, Desc, Severity}=[~p]"
+            , [{Module, Range, Desc, Severity}]), %% AZ
   Message0 = lists:flatten(Module:format_error(Desc)),
+  %% Message0 = lists:flatten(epp:format_error(Desc)),
   Message  = els_utils:to_binary(Message0),
   #{ range    => els_protocol:range(Range)
    , message  => Message
@@ -292,48 +295,79 @@ diagnostics_options_bare() ->
         {{ok | error, [compiler_msg()], [compiler_msg()]}
         , [els_diagnostics:diagnostic()]}.
 compile_file(Path, Dependencies) ->
+  lager:info("compile_file: {Path,Dependencies}=[~p]", [{Path, Dependencies}]),
   %% Load dependencies required for the compilation
-  Olds = [load_dependency(Dependency, Path)
-          || Dependency <- Dependencies
-               , not code:is_sticky(Dependency) ],
-  Res = compile:file(Path, diagnostics_options()),
+  Olds = load_dependencies(Dependencies, Path),
+  %% Trying to compile a file with a missing parse transform can crash the
+  %% erlang compile, meaning the next line never returns.  Force it to not use a
+  %% subprocess by setting 'no_spawn_compiler_process', so this does not happen.
+  Res = compile:file(Path, [no_spawn_compiler_process|diagnostics_options()]),
   %% Restore things after compilation
+  %% [code:load_binary(Dependency, Filename, Binary)
+  %%  || {{Dependency, Binary, Filename}, _} <- Olds],
   [code:load_binary(Dependency, Filename, Binary)
-   || {{Dependency, Binary, Filename}, _} <- Olds],
+   || {Dependencies0, _} <- Olds
+   , {{Dependency, Binary, Filename}, _} <- Dependencies0],
   Diagnostics = lists:flatten([ Diags || {_, Diags} <- Olds ]),
   {Res, Diagnostics}.
 
 %% @doc Load a dependency, return the old version of the code (if any),
 %% so it can be restored.
 -spec load_dependency(atom(), string()) ->
-        {{atom(), binary(), file:filename()}, [els_diagnostics:diagnostic()]}
+        { [{module(), binary(), file:filename()}]
+        , [els_diagnostics:diagnostic()]}
           | error.
 load_dependency(Module, IncludingPath) ->
   Old = code:get_object_code(Module),
-  Diagnostics =
+  {Olds1, Diagnostics} =
     case els_utils:find_module(Module) of
       {ok, Uri} ->
+        %% First load any recursive dependencies of this module
+        Dependencies = els_diagnostics_utils:dependencies(Uri),
+        Olds = load_dependencies(Dependencies, IncludingPath),
+        %% Olds = [load_dependency(Dependency, IncludingPath)
+        %%         || Dependency <- Dependencies
+        %%              , not code:is_sticky(Dependency) ],
+
         Path = els_utils:to_list(els_uri:path(Uri)),
         Opts = compile_options(Module),
+        %% lager:info("load_dependency: [{Path,Opts}]=[~p]",
+        %%            [{Path, diagnostics_options_load_code() ++ Opts}]),
         case compile:file(Path, diagnostics_options_load_code() ++ Opts) of
           {ok, [], []} ->
-            [];
+            lager:info("load_dependency: {ok,[],[]} for ~p", [Path]),
+            {Olds, []};
           {ok, Module, Binary} ->
-            code:load_binary(Module, atom_to_list(Module), Binary),
-            [];
+            lager:info("load_dependency: {ok,Module,Binary} for ~p", [Path]),
+            R = code:load_binary(Module, atom_to_list(Module), Binary),
+            lager:info("load_dependency: load_binary returned ~p", [R]),
+            {Olds, []};
           {ok, Module, Binary, WS} ->
-            code:load_binary(Module, atom_to_list(Module), Binary),
-            diagnostics(IncludingPath, WS, ?DIAGNOSTIC_WARNING);
+            lager:info("load_dependency: {ok,Module,Binary,WS} for ~p", [Path]),
+            R = code:load_binary(Module, atom_to_list(Module), Binary),
+            lager:info("load_dependency: load_binary returned ~p", [R]),
+            lager:info("load_dependency: WS ~p", [WS]),
+            {Olds, diagnostics(IncludingPath, WS, ?DIAGNOSTIC_WARNING)};
           {error, ES, WS} ->
+            lager:info("load_dependency: {error,ES,WS} for ~p", [Path]),
+            {Olds,
             diagnostics(IncludingPath, WS, ?DIAGNOSTIC_WARNING) ++
-              diagnostics(IncludingPath, ES, ?DIAGNOSTIC_ERROR)
+              diagnostics(IncludingPath, ES, ?DIAGNOSTIC_ERROR)}
         end;
       {error, Error} ->
         ?LOG_WARNING( "Error finding dependency [module=~p] [error=~p]"
-                    , [Module, Error]),
-        []
+                     , [Module, Error]),
+        {[], []}
     end,
-  {Old, Diagnostics}.
+  {[Old | Olds1], Diagnostics}.
+
+-spec load_dependencies([atom()], file:filename()) ->
+        [{ [{module(), binary(), file:filename()}]
+         , [els_diagnostics:diagnostic()]}].
+load_dependencies(Dependencies, IncludingPath) ->
+  [load_dependency(Dependency, IncludingPath)
+   || Dependency <- Dependencies
+        , not code:is_sticky(Dependency) ].
 
 -spec maybe_compile_and_load(uri(), [els_diagnostics:diagnostic()]) -> ok.
 maybe_compile_and_load(Uri, [] = _CDiagnostics) ->

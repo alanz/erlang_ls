@@ -60,7 +60,7 @@
 start_link(Provider) ->
   gen_server:start_link({local, Provider}, ?MODULE, Provider, []).
 
--spec handle_request(provider(), request()) -> any().
+-spec handle_request(provider(), request()) -> term().
 handle_request(Provider, Request) ->
   gen_server:call(Provider, {handle_request, Provider, Request}, infinity).
 
