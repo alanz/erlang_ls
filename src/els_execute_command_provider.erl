@@ -22,6 +22,7 @@ is_enabled() -> true.
 options() ->
   #{ commands => [ els_command:with_prefix(<<"replace-lines">>)
                  , els_command:with_prefix(<<"server-info">>)
+                 , els_command:with_prefix(<<"export">>)
                  , els_command:with_prefix(<<"ct-run-test">>)
                  , els_command:with_prefix(<<"show-behaviour-usages">>)
                  ] }.
@@ -85,6 +86,18 @@ execute_command(<<"ct-run-test">>, [Params]) ->
   els_command_ct_run_test:execute(Params),
   [];
 execute_command(<<"show-behaviour-usages">>, [_Params]) ->
+  [];
+execute_command(<<"export">>, [#{ <<"uri">> := Uri
+                                , <<"id">> := Id
+                                , <<"arity">> := Arity}]) ->
+  Method = <<"workspace/applyEdit">>,
+  Lines = io_lib:format("%% hello world [~p]~n", [{Id, Arity}]),
+  LineFrom = 1,
+  LineTo = 1,
+  Params = #{ edit =>
+                  els_text_edit:edit_replace_text(Uri, Lines, LineFrom, LineTo)
+            },
+  els_server:send_request(Method, Params),
   [];
 execute_command(Command, Arguments) ->
   lager:info("Unsupported command: [Command=~p] [Arguments=~p]"

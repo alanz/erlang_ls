@@ -9,11 +9,11 @@
 %%==============================================================================
 
 -callback command(poi()) -> els_command:command_id().
--callback command_args(els_dt_document:item(), poi()) -> [any()].
+-callback command_args(els_dt_document:item(), poi()) -> [map()].
 -callback is_default() -> boolean().
 -callback pois(els_dt_document:item()) -> [poi()].
 -callback precondition(els_dt_document:item()) -> boolean().
--callback title(poi()) -> binary().
+-callback title(els_dt_document:item(), poi()) -> binary().
 
 %%==============================================================================
 %% API
@@ -48,12 +48,17 @@
 %% API
 %%==============================================================================
 
+%% @doc these names are converted to module names via cb_module.
 -spec available_lenses() -> [lens_id()].
 available_lenses() ->
   [ <<"ct-run-test">>
   , <<"server-info">>
   , <<"show-behaviour-usages">>
+  , <<"export">>
   ].
+%% TODO: perhaps list the modules here, and ask them for the lens name, rather
+%% than this complex way of doing things, which makes it hard to follow the
+%% code. Use the command name perhaps?
 
 -spec default_lenses() -> [lens_id()].
 default_lenses() ->
@@ -83,7 +88,7 @@ lenses(Id, Document) ->
 
 -spec make_lens(atom(), els_dt_document:item(), poi()) -> lens().
 make_lens(CbModule, Document, #{range := Range} = POI) ->
-  Command = els_command:make_command( CbModule:title(POI)
+  Command = els_command:make_command( CbModule:title(Document, POI)
                                     , CbModule:command(POI)
                                     , CbModule:command_args(Document, POI)),
   #{ range   => els_protocol:range(Range)

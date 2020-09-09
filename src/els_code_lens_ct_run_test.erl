@@ -10,7 +10,7 @@
         , is_default/0
         , pois/1
         , precondition/1
-        , title/1
+        , title/2
         ]).
 
 -include("erlang_ls.hrl").
@@ -48,8 +48,8 @@ precondition(Document) ->
       true
   end.
 
--spec title(poi()) -> binary().
-title(_POI) ->
+-spec title(els_dt_document:item(), poi()) -> binary().
+title(_Document, _POI) ->
   <<"Run test">>.
 
 %%==============================================================================

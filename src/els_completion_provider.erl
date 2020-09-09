@@ -6,6 +6,7 @@
 
 -export([ handle_request/2
         , is_enabled/0
+        , resolve_exports/5
         ]).
 
 %% Exported to ease testing.
@@ -199,6 +200,12 @@ definitions(Document, POIKind, ExportFormat) ->
 definitions(Document, POIKind, ExportFormat, ExportedOnly) ->
   POIs     = local_and_included_pois(Document, POIKind),
 
+  resolve_exports(Document, POIs, POIKind, ExportedOnly, ExportFormat).
+
+-spec resolve_exports(els_dt_document:item(), [poi()], poi_kind()
+                     , boolean(), boolean())
+                     -> [map()].
+resolve_exports(Document, POIs, POIKind, ExportedOnly, ExportFormat) ->
   %% Find exported entries when there is an export_entry kind available
   FAs      = case export_entry_kind(POIKind) of
                {error, no_export_entry_kind} -> [];
