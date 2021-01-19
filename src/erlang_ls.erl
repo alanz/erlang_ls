@@ -4,7 +4,7 @@
 
 -export([ parse_args/1
         , log_root/0
-        , print_version/0]).
+        , print_version/0
         ]).
 
 %%==============================================================================
@@ -44,7 +44,7 @@ parse_args(Args) ->
       halt(1);
     {ok, {[check | Rest], OtherArgs}} ->
       set_args(Rest),
-      ok = lager_config(),
+      patch_logging(),
       els_cli:test_config(Rest, OtherArgs),
       halt(1);
     {ok, {ParsedArgs, _BadArgs}} ->

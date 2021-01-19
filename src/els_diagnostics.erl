@@ -104,7 +104,7 @@ run_diagnostic(Uri, Id) ->
             , title => Title
             , on_complete =>
                 fun(Diagnostics) ->
-                    lager:info("els_diagnostics: on_complete called"),
+                    ?LOG_INFO("els_diagnostics: on_complete called"),
                     case erlang:function_exported(CbModule, on_complete, 2) of
                       true ->
                         CbModule:on_complete(Uri, Diagnostics);
@@ -115,7 +115,7 @@ run_diagnostic(Uri, Id) ->
                 end
              , on_error =>
                 fun(State) ->
-                    lager:info("els_diagnostics: on_error called [~p]", [State])
+                    ?LOG_INFO("els_diagnostics: on_error called [~p]", [State])
                 end
             },
   {ok, Pid} = els_background_job:new(Config),

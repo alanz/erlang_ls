@@ -6,6 +6,11 @@
         ]).
 
 %%==============================================================================
+%% Includes
+%%==============================================================================
+-include_lib("kernel/include/logger.hrl").
+
+%%==============================================================================
 %% Defines
 %%==============================================================================
 -define(HOSTNAME, {127, 0, 0, 1}).
@@ -215,7 +220,7 @@ resulter(#{ files := Files
                 [{TodoCount, maps:size(Files), length(Completed)
                  , length(Progress), length(AllBads), length(Ignored)}]),
       io:format(Msg),
-      lager:info(Msg),
+      ?LOG_INFO(Msg),
       Ns = els_client:get_notifications(),
       case [ {Uri, D}
             || #{ method := <<"textDocument/publishDiagnostics">>

@@ -135,8 +135,3 @@ get_server_info() ->
              , OtpMessage/binary
             >>,
   Message.
-  %% els_server:send_notification(<<"window/showMessage">>,
-  %%                              #{ type => ?MESSAGE_TYPE_INFO,
-  %%                                 message => Message
-  %%                               }),
-  %% [];
