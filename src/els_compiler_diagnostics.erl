@@ -182,10 +182,7 @@ diagnostic(_Path, MessagePath, Range, Document, Module, Desc0, Severity) ->
 -spec diagnostic(poi_range(), module(), string(), integer()) ->
         els_diagnostics:diagnostic().
 diagnostic(Range, Module, Desc, Severity) ->
-  lager:info("diagnostic: {Module, Range, Desc, Severity}=[~p]"
-            , [{Module, Range, Desc, Severity}]), %% AZ
   Message0 = lists:flatten(Module:format_error(Desc)),
-  %% Message0 = lists:flatten(epp:format_error(Desc)),
   Message  = els_utils:to_binary(Message0),
   #{ range    => els_protocol:range(Range)
    , message  => Message
